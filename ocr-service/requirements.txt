@@ -1,0 +1,26 @@
+# OCR Service Dependencies
+# Python >= 3.11 required
+#
+# INSTALL ORDER MATTERS for PaddlePaddle on Windows:
+# 1. pip install paddlepaddle  (CPU) or paddlepaddle-gpu (CUDA)
+# 2. pip install paddleocr
+# 3. pip install -r requirements.txt
+#
+# On first run, PaddleOCR automatically downloads model weights (~200MB).
+# Ensure network access or pre-download models for offline environments.
+
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+python-multipart>=0.0.9
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+opencv-python-headless>=4.9.0.80
+paddleocr>=2.7.3
+# paddlepaddle is intentionally NOT listed here because the CPU/GPU
+# variant must be chosen by the developer. Install separately:
+#   pip install paddlepaddle       (CPU)
+#   pip install paddlepaddle-gpu   (GPU with CUDA)
+
+# Development / testing only
+pytest>=8.1.0
+httpx>=0.27.0  # ASGI test client for FastAPI

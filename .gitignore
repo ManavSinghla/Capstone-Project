@@ -1,0 +1,34 @@
+# === Credentials / Environment ================================================
+# NEVER commit real credentials. Use .env.example for templates.
+.env
+.env.local
+.env.*.local
+
+# === Node / Express Backend ===================================================
+backend/node_modules/
+backend/.prisma/
+backend/storage/uploads/
+
+# === Python OCR Service =======================================================
+ocr-service/__pycache__/
+ocr-service/**/__pycache__/
+ocr-service/.venv/
+ocr-service/venv/
+ocr-service/*.egg-info/
+ocr-service/.pytest_cache/
+ocr-service/.mypy_cache/
+
+# === Frontend =================================================================
+frontend/node_modules/
+frontend/dist/
+
+# === OS Artifacts =============================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === IDE ======================================================================
+.vscode/
+.idea/
+*.suo
+*.user

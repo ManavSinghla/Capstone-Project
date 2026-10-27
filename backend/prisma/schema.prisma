@@ -1,0 +1,248 @@
+// =============================================================================
+//  Prisma Schema — Legal Metrology (Packaged Commodities) Compliance Checker
+//  SIH Problem Statement 26034
+// =============================================================================
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =============================================================================
+//  Enums
+// =============================================================================
+
+enum InspectionStatus {
+  PROCESSING
+  COMPLIANT
+  NON_COMPLIANT
+  NEEDS_REVIEW
+}
+
+enum RuleStatus {
+  COMPLIANT
+  NON_COMPLIANT
+  NEEDS_REVIEW
+  NOT_APPLICABLE
+}
+
+enum PackageShape {
+  RECTANGULAR
+  CYLINDRICAL
+  OTHER
+}
+
+enum PanelType {
+  PDP       // Principal Display Panel (front face with MRP, net qty etc.)
+  BACK
+  SIDE_LEFT
+  SIDE_RIGHT
+  TOP
+  BOTTOM
+}
+
+// =============================================================================
+//  Inspections
+//  One inspection = one commodity label audit session.
+// =============================================================================
+
+model Inspection {
+  id                String           @id @default(uuid())
+  productName       String           @map("product_name")
+  brandName         String?          @map("brand_name")
+  packageShape      PackageShape     @default(RECTANGULAR) @map("package_shape")
+
+  // Package physical dimensions in centimetres.
+  // JSONB — flexible for rectangular {height_cm, width_cm, depth_cm}
+  // or cylindrical {height_cm, circumference_cm}.
+  dimensions        Json
+
+  // Computed from dimensions at creation time; stored to avoid recomputing.
+  pdpAreaSqCm       Float            @map("pdp_area_sq_cm")
+
+  overallStatus     InspectionStatus @default(PROCESSING) @map("overall_status")
+
+  // Aggregate OCR confidence across all images (null until processing completes).
+  overallConfidence Float?           @map("overall_confidence")
+
+  // Inspector free-text remarks or override justification.
+  notes             String?
+
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  images            UploadedImage[]
+  declarations      ExtractedDeclaration[]
+  evaluations       RuleEvaluation[]
+
+  @@map("inspections")
+}
+
+// =============================================================================
+//  UploadedImage
+//  One inspection may have up to 6 images (PDP, back, sides, etc.).
+//  Each image is stored exactly once on disk.
+// =============================================================================
+
+model UploadedImage {
+  id             String      @id @default(uuid())
+  inspectionId   String      @map("inspection_id")
+
+  // Path on server disk, relative to STORAGE_DIR env var.
+  // Example: "/{inspection_id}/{uuid}.jpg"
+  filePath       String      @map("file_path")
+
+  // SHA-256 hex digest of raw file bytes.
+  // Used for chain-of-custody and deduplication checks.
+  fileHashSha256 String      @map("file_hash_sha256")
+
+  panelType      PanelType   @default(PDP) @map("panel_type")
+  mimeType       String      @map("mime_type")
+  fileSizeBytes  Int         @map("file_size_bytes")
+
+  // Native pixel dimensions of the image as uploaded.
+  imageWidthPx   Int         @map("image_width_px")
+  imageHeightPx  Int         @map("image_height_px")
+
+  // Laplacian variance blur score from quality pre-check.
+  // Higher = sharper. Null until OCR service reports it.
+  blurScore      Float?      @map("blur_score")
+
+  // Full structured JSON response from the FastAPI OCR service.
+  // Stored verbatim so the inspection is reproducible and auditable.
+  rawOcrResult   Json?       @map("raw_ocr_result")
+
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  inspection     Inspection  @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@map("uploaded_images")
+}
+
+// =============================================================================
+//  ExtractedDeclaration
+//  One row per mandatory declaration field extracted from OCR text.
+//  e.g. MRP, unit_sale_price, net_quantity, mfg_date, manufacturer_address, etc.
+// =============================================================================
+
+model ExtractedDeclaration {
+  id              String     @id @default(uuid())
+  inspectionId    String     @map("inspection_id")
+
+  // Canonical field identifier matching the Compliance Engine key names.
+  // e.g. "mrp", "unit_sale_price", "net_quantity", "mfg_date",
+  //      "manufacturer_address", "customer_care", "country_of_origin"
+  fieldName       String     @map("field_name")
+
+  // Raw text string as returned by OCR, before normalisation.
+  rawText         String     @map("raw_text")
+
+  // Structured parsed value — schema varies by field.
+  // Examples:
+  //   mrp:              { "amount": 120.00, "currency": "INR", "incl_taxes": true }
+  //   net_quantity:     { "magnitude": 200.0, "unit": "g" }
+  //   unit_sale_price:  { "amount": 0.60, "base_unit": "g" }
+  //   mfg_date:         { "month": 10, "year": 2026 }
+  //   customer_care:    { "name": "...", "address": "...", "phone": "...", "email": "..." }
+  normalizedValue Json       @map("normalized_value")
+
+  // Bounding box on the source image in pixels: { x_min, y_min, x_max, y_max }
+  boundingBox     Json?      @map("bounding_box")
+
+  // OCR confidence 0.0–1.0 for the text block containing this declaration.
+  confidence      Float
+
+  // True when an inspector manually corrected this field after automated extraction.
+  isUserOverridden Boolean   @default(false) @map("is_user_overridden")
+  overrideReason  String?    @map("override_reason")
+
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  inspection      Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@unique([inspectionId, fieldName])
+  @@map("extracted_declarations")
+}
+
+// =============================================================================
+//  RuleVersion
+//  Versioned record of each legal compliance rule.
+//
+//  IMPORTANT CONSTRAINT (enforced in Compliance Engine, not just here):
+//  Rules with isProvisional = true MUST NOT produce NON_COMPLIANT outcomes.
+//  They must return NEEDS_REVIEW until an administrator verifies the rule
+//  against the authoritative gazette text and clears the provisional flag.
+// =============================================================================
+
+model RuleVersion {
+  id             String      @id @default(uuid())
+
+  // Stable machine-readable identifier. Never reused.
+  // e.g. "RULE_6_1_E_MRP", "RULE_6_11_USP", "RULE_7_FONT_SIZE"
+  ruleCode       String      @unique @map("rule_code")
+
+  // Human-readable title for reports and UI.
+  title          String
+
+  // Verbatim statutory citation.
+  // e.g. "Rule 6(1)(e) of the Legal Metrology (Packaged Commodities) Rules, 2011"
+  legalCitation  String      @map("legal_citation")
+
+  // Gazette notification reference (GSR number + date).
+  gazetteRef     String?     @map("gazette_ref")
+
+  // Date from which this version of the rule is in force.
+  effectiveDate  DateTime    @map("effective_date")
+
+  // Description of what the rule checks, plain language.
+  description    String
+
+  // When true: the rule implementation has NOT been fully cross-referenced
+  // against the authoritative gazette text. The compliance engine will
+  // return NEEDS_REVIEW rather than NON_COMPLIANT for provisional rules.
+  isProvisional  Boolean     @default(true) @map("is_provisional")
+
+  isActive       Boolean     @default(true) @map("is_active")
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  evaluations    RuleEvaluation[]
+
+  @@map("rule_versions")
+}
+
+// =============================================================================
+//  RuleEvaluation
+//  One row per rule checked per inspection.
+// =============================================================================
+
+model RuleEvaluation {
+  id              String      @id @default(uuid())
+  inspectionId    String      @map("inspection_id")
+  ruleVersionId   String      @map("rule_version_id")
+
+  status          RuleStatus  @default(NEEDS_REVIEW)
+
+  // Plain-language explanation of the verdict, citing evidence.
+  explanation     String
+
+  // The OCR text snippet (or absence thereof) that the rule acted on.
+  evidenceSnippet String?     @map("evidence_snippet")
+
+  // Structured machine-readable metadata for the specific rule.
+  // Examples:
+  //   USP rule:      { "declared_usp": 0.60, "calculated_usp": 0.60, "match": true }
+  //   Font rule:     { "pdp_area_sq_cm": 120, "required_min_mm": 2.5, "estimated_min_mm": 1.8 }
+  metadata        Json?
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  inspection      Inspection  @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  ruleVersion     RuleVersion @relation(fields: [ruleVersionId], references: [id])
+
+  @@unique([inspectionId, ruleVersionId])
+  @@map("rule_evaluations")
+}
