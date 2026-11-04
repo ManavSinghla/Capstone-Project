@@ -1,18 +1,15 @@
-FROM node:22-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 COPY package*.json ./
-COPY prisma ./prisma
-
 RUN npm install
+
+COPY prisma ./prisma/
 RUN npx prisma generate
 
-COPY src ./src
-
-RUN mkdir -p storage/uploads
+COPY . .
 
 EXPOSE 5000
 
-CMD ["node", "src/server.js"]
-
+CMD ["npm", "start"]

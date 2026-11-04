@@ -1,5 +1,5 @@
 /**
- * prisma/seed.js — Initial data seeding
+ * prisma/seed.js â€” Initial data seeding
  *
  * Seeds the rule_versions table with Legal Metrology (Packaged Commodities)
  * Rules, 2011 (and amendments).
@@ -29,7 +29,7 @@ const rules = [
       'Every pre-packaged commodity shall bear the name and complete postal ' +
       'address of the manufacturer, packer, or importer. If the manufacturer ' +
       'and packer differ, both must be declared.',
-    isProvisional: false, // Verified — see docs/legal_references.md
+    isProvisional: false, // Verified â€” see docs/legal_references.md
     isActive: true,
   },
   {

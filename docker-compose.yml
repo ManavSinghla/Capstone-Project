@@ -1,9 +1,9 @@
-# docker-compose.yml — Local development orchestration
+# docker-compose.yml â€” Local development orchestration
 #
 # Services:
-#   db          — PostgreSQL 16 (data persisted in a named volume)
-#   ocr-service — Python FastAPI OCR service
-#   backend     — Node.js Express API (depends on db + ocr-service)
+#   db          â€” PostgreSQL 16 (data persisted in a named volume)
+#   ocr-service â€” Python FastAPI OCR service
+#   backend     â€” Node.js Express API (depends on db + ocr-service)
 #
 # Usage:
 #   docker-compose up --build

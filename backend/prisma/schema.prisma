@@ -1,5 +1,5 @@
 // =============================================================================
-//  Prisma Schema — Legal Metrology (Packaged Commodities) Compliance Checker
+//  Prisma Schema â€” Legal Metrology (Packaged Commodities) Compliance Checker
 //  SIH Problem Statement 26034
 // =============================================================================
 
@@ -57,7 +57,7 @@ model Inspection {
   packageShape      PackageShape     @default(RECTANGULAR) @map("package_shape")
 
   // Package physical dimensions in centimetres.
-  // JSONB — flexible for rectangular {height_cm, width_cm, depth_cm}
+  // JSONB â€” flexible for rectangular {height_cm, width_cm, depth_cm}
   // or cylindrical {height_cm, circumference_cm}.
   dimensions        Json
 
@@ -141,7 +141,7 @@ model ExtractedDeclaration {
   // Raw text string as returned by OCR, before normalisation.
   rawText         String     @map("raw_text")
 
-  // Structured parsed value — schema varies by field.
+  // Structured parsed value â€” schema varies by field.
   // Examples:
   //   mrp:              { "amount": 120.00, "currency": "INR", "incl_taxes": true }
   //   net_quantity:     { "magnitude": 200.0, "unit": "g" }
@@ -153,7 +153,7 @@ model ExtractedDeclaration {
   // Bounding box on the source image in pixels: { x_min, y_min, x_max, y_max }
   boundingBox     Json?      @map("bounding_box")
 
-  // OCR confidence 0.0–1.0 for the text block containing this declaration.
+  // OCR confidence 0.0â€“1.0 for the text block containing this declaration.
   confidence      Float
 
   // True when an inspector manually corrected this field after automated extraction.

@@ -41,10 +41,10 @@ Rules remain provisional until cross-referenced with the primary gazette text.
 
 ---
 
-## PROVISIONAL Rules — Outstanding Verification Tasks
+## PROVISIONAL Rules â€” Outstanding Verification Tasks
 
 ### RULE_6_11_USP
-- Exemption condition: "MRP equals Unit Sale Price" — exact wording needs
+- Exemption condition: "MRP equals Unit Sale Price" â€” exact wording needs
   gazette confirmation.
 - Exemption for alcoholic beverages: governed by State Excise; interstate
   variation not yet mapped.

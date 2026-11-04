@@ -34,7 +34,7 @@ See [docs/architecture.md](docs/architecture.md) for full system design.
 ### 1. Install PostgreSQL
 
 1. Download the EDB installer: https://www.enterprisedb.com/downloads/postgres-postgresql-installer
-2. Run installer — set password for `postgres` superuser (remember it).
+2. Run installer â€” set password for `postgres` superuser (remember it).
 3. Verify: open **pgAdmin 4** or run `psql -U postgres` in PowerShell.
 4. Create the database:
    ```sql
@@ -49,7 +49,7 @@ Copy-Item .env.example .env
 notepad .env
 ```
 
-Edit `.env` — set `DATABASE_URL` with your PostgreSQL password:
+Edit `.env` â€” set `DATABASE_URL` with your PostgreSQL password:
 ```
 DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/legal_metrology_db?schema=public"
 ```
@@ -90,7 +90,7 @@ cd ocr-service
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 
-# Install PaddlePaddle (CPU version — required separately)
+# Install PaddlePaddle (CPU version â€” required separately)
 pip install paddlepaddle
 
 # Install all other dependencies
@@ -114,14 +114,14 @@ Visit: http://localhost:8000/health
 
 ## Running Tests
 
-### Backend — Compliance Engine (Jest)
+### Backend â€” Compliance Engine (Jest)
 
 ```powershell
 cd backend
 npm test
 ```
 
-### OCR Service — Contract Tests (pytest)
+### OCR Service â€” Contract Tests (pytest)
 
 ```powershell
 cd ocr-service

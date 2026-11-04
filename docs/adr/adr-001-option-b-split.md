@@ -20,7 +20,7 @@ Accepted
 | C: Node.js + cloud OCR API | No ML infra | Paid API; data leaves server | Low |
 
 ## Decision
-**Option B** — Node.js/Express main backend with a Python/FastAPI OCR sidecar.
+**Option B** â€” Node.js/Express main backend with a Python/FastAPI OCR sidecar.
 
 ## Rationale
 - Compliance engine and API layer benefit from Node.js async model and Prisma ORM.

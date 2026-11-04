@@ -282,3 +282,94 @@ describe('Overall status derivation', () => {
     expect(overallStatus).toBe(RuleStatus.NON_COMPLIANT);
   });
 });
+
+// --- Milestone 3: Normalization & Additional Rules ----------------------------
+
+describe('Normalizer — Manufacturing & Expiry Dates', () => {
+  test('parses numeric manufacturing date (MM/YYYY)', () => {
+    const blocks = [makeBlock('Mfg Date: 10/2026')];
+    const decls = normalizeDeclarations(blocks);
+    expect(decls.mfg_date).toBeDefined();
+    expect(decls.mfg_date.normalizedValue.month).toBe(10);
+    expect(decls.mfg_date.normalizedValue.year).toBe(2026);
+  });
+
+  test('parses named month manufacturing date', () => {
+    const blocks = [makeBlock('Manufactured: October 2026')];
+    const decls = normalizeDeclarations(blocks);
+    expect(decls.mfg_date).toBeDefined();
+    expect(decls.mfg_date.normalizedValue.month).toBe(10);
+    expect(decls.mfg_date.normalizedValue.year).toBe(2026);
+  });
+
+  test('parses expiry duration phrase (best before X months)', () => {
+    const blocks = [makeBlock('Best Before 12 Months from Mfg')];
+    const decls = normalizeDeclarations(blocks);
+    expect(decls.expiry_date).toBeDefined();
+    expect(decls.expiry_date.normalizedValue.durationValue).toBe(12);
+    expect(decls.expiry_date.normalizedValue.isDuration).toBe(true);
+  });
+});
+
+describe('Normalizer — Manufacturer & Indian PIN Code', () => {
+  test('parses manufacturer name and 6-digit postal PIN code', () => {
+    const blocks = [makeBlock('Mfg by: Nestle India Ltd, Industrial Area, Una, HP - 174301')];
+    const decls = normalizeDeclarations(blocks);
+    expect(decls.manufacturer).toBeDefined();
+    expect(decls.manufacturer.normalizedValue.pincode).toBe('174301');
+    expect(decls.manufacturer.normalizedValue.hasPincode).toBe(true);
+  });
+});
+
+describe('Normalizer — Country of Origin & Customer Care', () => {
+  test('parses domestic country of origin', () => {
+    const blocks = [makeBlock('Country of Origin: India')];
+    const decls = normalizeDeclarations(blocks);
+    expect(decls.country_of_origin).toBeDefined();
+    expect(decls.country_of_origin.normalizedValue.country).toBe('India');
+    expect(decls.country_of_origin.normalizedValue.isDomestic).toBe(true);
+  });
+
+  test('parses customer care phone and email', () => {
+    const blocks = [makeBlock('Customer Care: 1800 209 0909, care@nestle.com')];
+    const decls = normalizeDeclarations(blocks);
+    expect(decls.customer_care).toBeDefined();
+    expect(decls.customer_care.normalizedValue.email).toBe('care@nestle.com');
+  });
+});
+
+describe('HITL Re-Evaluation (Instant live evaluation without OCR)', () => {
+  test('updates status when user manually corrects missing declaration', () => {
+    const mrpRule = makeRuleVersion({ ruleCode: 'RULE_6_1_E_MRP', isProvisional: false });
+    
+    // Initial evaluation with missing tax phrase
+    const initial = runComplianceCheck({
+      textBlocks: [makeBlock('MRP Rs. 150')],
+      pdpAreaSqCm: 100,
+      ruleVersions: [mrpRule],
+    });
+    expect(initial.overallStatus).toBe(RuleStatus.NON_COMPLIANT);
+
+    // Inspector overrides the declaration to confirm tax inclusion
+    const overriddenDeclarations = {
+      ...initial.declarations,
+      mrp: {
+        ...initial.declarations.mrp,
+        isUserOverridden: true,
+        normalizedValue: {
+          ...initial.declarations.mrp.normalizedValue,
+          inclTaxes: true,
+        },
+      },
+    };
+
+    // Live re-evaluation without re-running OCR
+    const reEvaluated = runComplianceCheck({
+      declarations: overriddenDeclarations,
+      pdpAreaSqCm: 100,
+      ruleVersions: [mrpRule],
+    });
+    expect(reEvaluated.overallStatus).toBe(RuleStatus.COMPLIANT);
+  });
+});
+
