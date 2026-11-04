@@ -1,16 +1,16 @@
 /**
- * rule-7-font-size.js — Rule 7 + Table-I: Minimum font height vs PDP area
+ * rule-7-font-size.js â€” Rule 7 + Table-I: Minimum font height vs PDP area
  *
  * Legal Basis: Rule 7 of the Legal Metrology (Packaged Commodities) Rules, 2011.
  * Gazette: GSR 830(E), 3 September 2011.
  * Provisional: NO (verified)
  *
- * Table-I Minimum Heights (normal label — not blown/embossed):
- *   PDP area <= 50 cm²       ? 1.0 mm
- *   50 < area <= 100 cm²     ? 1.5 mm
- *   100 < area <= 500 cm²    ? 2.5 mm
- *   500 < area <= 2500 cm²   ? 4.0 mm
- *   area > 2500 cm²          ? 6.0 mm
+ * Table-I Minimum Heights (normal label â€” not blown/embossed):
+ *   PDP area <= 50 cmÂ²       ? 1.0 mm
+ *   50 < area <= 100 cmÂ²     ? 1.5 mm
+ *   100 < area <= 500 cmÂ²    ? 2.5 mm
+ *   500 < area <= 2500 cmÂ²   ? 4.0 mm
+ *   area > 2500 cmÂ²          ? 6.0 mm
  *
  * NOTE: Verifying measured font height in millimetres from a photograph
  * requires accurate pixels-per-mm calibration (derived from user-entered
@@ -21,7 +21,7 @@ import { RuleStatus } from '../types.js';
 
 export const RULE_CODE = 'RULE_7_FONT_SIZE';
 
-/** Table-I lookup — verified against Rule 7 gazette text */
+/** Table-I lookup â€” verified against Rule 7 gazette text */
 const TABLE_I = [
   { maxArea: 50,   minHeightMm: 1.0 },
   { maxArea: 100,  minHeightMm: 1.5 },
@@ -76,8 +76,8 @@ export function evaluate(declarations, ruleVersion, context = {}) {
     return {
       status: RuleStatus.NEEDS_REVIEW,
       explanation:
-        `PDP area is ${pdpAreaSqCm.toFixed(2)} cm². Required minimum font height: ${requiredMm} mm. ` +
-        'Observed font height in mm could not be estimated — package scale data or OCR font measurements are missing. ' +
+        `PDP area is ${pdpAreaSqCm.toFixed(2)} cmÂ². Required minimum font height: ${requiredMm} mm. ` +
+        'Observed font height in mm could not be estimated â€” package scale data or OCR font measurements are missing. ' +
         'Manual measurement required.',
       evidenceSnippet: null,
       metadata: { pdpAreaSqCm, requiredMm, observedMm: null },
@@ -88,7 +88,7 @@ export function evaluate(declarations, ruleVersion, context = {}) {
     return {
       status: RuleStatus.NON_COMPLIANT,
       explanation:
-        `PDP area ${pdpAreaSqCm.toFixed(2)} cm² requires minimum font height of ${requiredMm} mm (Table-I). ` +
+        `PDP area ${pdpAreaSqCm.toFixed(2)} cmÂ² requires minimum font height of ${requiredMm} mm (Table-I). ` +
         `Estimated minimum observed height: ${minObservedFontHeightMm.toFixed(2)} mm. ` +
         'Fails Rule 7.',
       evidenceSnippet: null,
@@ -99,7 +99,7 @@ export function evaluate(declarations, ruleVersion, context = {}) {
   return {
     status: RuleStatus.COMPLIANT,
     explanation:
-      `PDP area ${pdpAreaSqCm.toFixed(2)} cm² — required minimum: ${requiredMm} mm; ` +
+      `PDP area ${pdpAreaSqCm.toFixed(2)} cmÂ² â€” required minimum: ${requiredMm} mm; ` +
       `observed minimum: ${minObservedFontHeightMm.toFixed(2)} mm. Passes Rule 7 Table-I.`,
     evidenceSnippet: null,
     metadata: { pdpAreaSqCm, requiredMm, observedMm: minObservedFontHeightMm },

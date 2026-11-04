@@ -1,5 +1,5 @@
 /**
- * api.router.js — Top-level API router
+ * api.router.js â€” Top-level API router
  * All routes are mounted under /api/v1 (set in app.js).
  */
 

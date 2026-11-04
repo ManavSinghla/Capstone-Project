@@ -1,5 +1,5 @@
 /**
- * error.middleware.js — Centralised Express error handler
+ * error.middleware.js â€” Centralised Express error handler
  *
  * Must be registered LAST in Express (after all routes).
  * Ensures no stack traces or internal details leak to API consumers.

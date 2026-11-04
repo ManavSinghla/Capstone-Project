@@ -1,5 +1,5 @@
 /**
- * types.js — Compliance Engine constants
+ * types.js â€” Compliance Engine constants
  *
  * All outcome values are defined here as frozen strings.
  * Import this module wherever a rule verdict must be assigned.

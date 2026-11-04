@@ -1,10 +1,10 @@
 /**
- * normalizer.js — Raw OCR text ? Structured Declaration Entities
+ * normalizer.js â€” Raw OCR text ? Structured Declaration Entities
  *
  * Accepts the array of text_blocks from the OCR service response
  * and parses each block into strongly typed declaration objects.
  *
- * This module is PURE — no DB, no Express, no OCR dependencies.
+ * This module is PURE â€” no DB, no Express, no OCR dependencies.
  * All regex patterns produce null on non-match (never throw).
  *
  * Returns: { fieldName: { rawText, normalizedValue, boundingBox, confidence } }
@@ -14,13 +14,13 @@ import { MIN_CONFIDENCE_THRESHOLD } from './types.js';
 
 // --- MRP -----------------------------------------------------------------------
 // Accepts: "MRP Rs. 85.00 (Incl. of all taxes)"
-//          "M.R.P. ₹ 85  (inclusive of all taxes)"
+//          "M.R.P. â‚¹ 85  (inclusive of all taxes)"
 //          "Maximum Retail Price Rs.85.50 Incl. of all taxes"
 const MRP_PATTERN =
   /(?:m\.?r\.?p\.?|maximum\s+retail\s+price)\s*(?:rs\.?|\u20B9|inr)?\s*([\d,]+(?:\.\d{1,2})?)\s*(?:\(?\s*incl(?:usive)?\.?\s+of\s+all\s+taxes\s*\)?)/i;
 
 // --- Unit Sale Price ------------------------------------------------------------
-// Accepts: "Unit Sale Price: Rs. 0.60/g"  "USP: ₹0.425 per g"
+// Accepts: "Unit Sale Price: Rs. 0.60/g"  "USP: â‚¹0.425 per g"
 const USP_PATTERN =
   /(?:unit\s+sale\s+price|u\.?s\.?p\.?)\s*:?\s*(?:rs\.?|\u20B9|inr)?\s*([\d,]+(?:\.\d{1,4})?)\s*(?:\/|per\s+)(g|kg|ml|l|cm|m|no|number|piece|pcs)/i;
 

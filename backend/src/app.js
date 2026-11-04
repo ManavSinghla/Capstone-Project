@@ -1,5 +1,5 @@
 /**
- * app.js — Express application bootstrap
+ * app.js â€” Express application bootstrap
  *
  * Order matters:
  *  1. Security headers (helmet)

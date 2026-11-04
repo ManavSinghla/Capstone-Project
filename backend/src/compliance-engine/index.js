@@ -1,5 +1,5 @@
 /**
- * compliance-engine/index.js — ComplianceEngine Orchestrator
+ * compliance-engine/index.js â€” ComplianceEngine Orchestrator
  *
  * ISOLATION GUARANTEE:
  *   This module has zero imports from Express, Prisma, Axios, or any
@@ -29,7 +29,7 @@ const RULE_REGISTRY = [
  *
  * @param {Object} input
  * @param {Array}  input.textBlocks   - Raw text_blocks from the OCR service
- * @param {number} input.pdpAreaSqCm  - Computed PDP area in cm²
+ * @param {number} input.pdpAreaSqCm  - Computed PDP area in cmÂ²
  * @param {Array}  input.ruleVersions - Array of RuleVersion objects from DB
  * @param {Object} [input.context]    - Extra context (e.g. minObservedFontHeightMm)
  *
@@ -46,7 +46,7 @@ export function runComplianceCheck({ textBlocks, pdpAreaSqCm, ruleVersions, cont
   for (const { code, evaluator } of RULE_REGISTRY) {
     const ruleVersion = ruleMap[code];
     if (!ruleVersion) {
-      // Rule exists in the engine but is not yet in the DB — skip silently.
+      // Rule exists in the engine but is not yet in the DB â€” skip silently.
       continue;
     }
     if (!ruleVersion.isActive) continue;

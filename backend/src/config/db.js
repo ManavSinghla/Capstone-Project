@@ -1,5 +1,5 @@
 /**
- * db.js — PrismaClient singleton
+ * db.js â€” PrismaClient singleton
  *
  * Imports and re-exports a single shared PrismaClient instance.
  * Avoids creating multiple connection pools in development

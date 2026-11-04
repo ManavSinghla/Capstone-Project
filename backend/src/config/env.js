@@ -1,9 +1,9 @@
 /**
- * env.js — validated environment configuration
+ * env.js â€” validated environment configuration
  *
  * Reads process.env at startup and fails fast with clear messages
  * when required variables are missing or invalid.
- * Uses Zod for runtime schema validation — no silent bad defaults.
+ * Uses Zod for runtime schema validation â€” no silent bad defaults.
  */
 
 import { z } from 'zod';

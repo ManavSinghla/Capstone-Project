@@ -1,18 +1,18 @@
 /**
- * rule-6-11-usp.js — Rule 6(11): Unit Sale Price declaration
+ * rule-6-11-usp.js â€” Rule 6(11): Unit Sale Price declaration
  *
  * Legal Basis: Rule 6(11) of the Legal Metrology (Packaged Commodities) Rules,
  * 2011 as amended by LM(PC) Amendment Rules, 2021 (GSR 779(E)) and 2022 (GSR 247(E)).
- * Provisional: YES — exemption boundary conditions and exact commencement date
+ * Provisional: YES â€” exemption boundary conditions and exact commencement date
  * require confirmation against official gazette text.
  *
  * Checks (when not provisional):
  * 1. USP is declared alongside MRP on the PDP.
  * 2. Base unit matches net quantity bracket (g/kg, ml/l, cm/m, per number).
- * 3. Declared USP rounded to 2 decimal places matches MRP ÷ net_quantity.
+ * 3. Declared USP rounded to 2 decimal places matches MRP Ã· net_quantity.
  * 4. OCR confidence meets the threshold.
  *
- * Exemptions (provisional — NOT enforced until verified):
+ * Exemptions (provisional â€” NOT enforced until verified):
  * - MRP equals USP (single-unit packages at base rate)
  * - Wholesale packages (Rule 2(r))
  * - Alcoholic beverages governed by State Excise
@@ -53,8 +53,8 @@ function calculateExpectedUsp(mrpAmount, qtyMagnitude, qtyUnit) {
   // Convert to base unit if needed
   const u = qtyUnit.toLowerCase();
   let qty = qtyMagnitude;
-  if (u === 'kg') qty = qtyMagnitude * 1000; // convert to g for per-g calc — not needed; kg stays
-  // ponytail: keep simple — rule is per declared unit, not converted
+  if (u === 'kg') qty = qtyMagnitude * 1000; // convert to g for per-g calc â€” not needed; kg stays
+  // ponytail: keep simple â€” rule is per declared unit, not converted
   const raw = mrpAmount / qty;
   return Math.round(raw * 100) / 100; // round to 2dp
 }
@@ -83,7 +83,7 @@ export function evaluate(declarations, ruleVersion) {
   const qty = declarations['net_quantity'];
 
   if (!usp) {
-    // Missing USP — check if exempt (MRP == USP by calculation)
+    // Missing USP â€” check if exempt (MRP == USP by calculation)
     if (mrp && qty && isConfident(mrp) && isConfident(qty)) {
       const { amount: mrpAmt } = mrp.normalizedValue;
       const { magnitude, unit } = qty.normalizedValue;
@@ -147,7 +147,7 @@ export function evaluate(declarations, ruleVersion) {
           status: RuleStatus.NON_COMPLIANT,
           explanation:
             `Declared USP (?${declaredUsp}/${baseUnit}) does not match calculated value ` +
-            `(?${mrpAmt} ÷ ${magnitude}${unit} = ?${expectedUsp}/${unit}). ` +
+            `(?${mrpAmt} Ã· ${magnitude}${unit} = ?${expectedUsp}/${unit}). ` +
             'Discrepancy exceeds rounding tolerance.',
           evidenceSnippet: usp.rawText,
           metadata: { declaredUsp, expectedUsp, mrpAmt, qtyMagnitude: magnitude, qtyUnit: unit },

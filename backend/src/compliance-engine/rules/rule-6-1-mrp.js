@@ -1,5 +1,5 @@
 /**
- * rule-6-1-mrp.js — Rule 6(1)(e): MRP inclusive of all taxes
+ * rule-6-1-mrp.js â€” Rule 6(1)(e): MRP inclusive of all taxes
  *
  * Legal Basis: Rule 6(1)(e) of the Legal Metrology (Packaged Commodities)
  * Rules, 2011. Gazette: GSR 830(E), 3 September 2011.
@@ -23,7 +23,7 @@ export const RULE_CODE = 'RULE_6_1_E_MRP';
  * @returns {{ status: string, explanation: string, evidenceSnippet: string|null, metadata: Object }}
  */
 export function evaluate(declarations, ruleVersion) {
-  // Provisional guard — should not be needed for this rule, but defensive.
+  // Provisional guard â€” should not be needed for this rule, but defensive.
   if (ruleVersion.isProvisional) {
     return {
       status: RuleStatus.NEEDS_REVIEW,
@@ -46,7 +46,7 @@ export function evaluate(declarations, ruleVersion) {
     };
   }
 
-  // Low-confidence extraction — cannot confirm presence or absence.
+  // Low-confidence extraction â€” cannot confirm presence or absence.
   if (!isConfident(mrp)) {
     return {
       status: RuleStatus.NEEDS_REVIEW,

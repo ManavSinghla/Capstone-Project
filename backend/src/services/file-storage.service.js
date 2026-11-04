@@ -1,7 +1,7 @@
 /**
- * file-storage.service.js — Safe file I/O and SHA-256 checksum generation
+ * file-storage.service.js â€” Safe file I/O and SHA-256 checksum generation
  *
- * Uses Node.js built-in crypto and fs/promises — no external dependencies.
+ * Uses Node.js built-in crypto and fs/promises â€” no external dependencies.
  * Keeps uploaded files exactly once on disk under STORAGE_DIR.
  */
 

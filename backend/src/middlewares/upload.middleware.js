@@ -1,5 +1,5 @@
 /**
- * upload.middleware.js — Multer file upload configuration
+ * upload.middleware.js â€” Multer file upload configuration
  *
  * Security measures:
  *   1. File extension is replaced with a UUID-based random name
