@@ -14,8 +14,14 @@ dotenv.config();
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1024).max(65535).default(5000),
-  DATABASE_URL: z.string().url('DATABASE_URL must be a valid PostgreSQL connection string'),
-  OCR_SERVICE_URL: z.string().url('OCR_SERVICE_URL must be a valid HTTP URL'),
+  DATABASE_URL: z
+    .string()
+    .url('DATABASE_URL must be a valid PostgreSQL connection string')
+    .default('postgresql://postgres:postgres@localhost:5432/legal_metrology_db?schema=public'),
+  OCR_SERVICE_URL: z
+    .string()
+    .url('OCR_SERVICE_URL must be a valid HTTP URL')
+    .default('http://localhost:8000/api/v1/ocr/process-image'),
   OCR_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(15000),
   STORAGE_DIR: z.string().min(1).default('./storage/uploads'),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().int().min(1).max(50).default(15),
