@@ -20,7 +20,7 @@ def _load_engine():
     Attempts PaddleOCR; falls back to mock with a warning if unavailable.
     """
     try:
-        # Lazy import — only attempted if paddlepaddle is installed
+        # Lazy import â€” only attempted if paddlepaddle is installed
         from .engines.paddle_engine import PaddleOCREngine  # noqa: PLC0415
         engine = PaddleOCREngine(use_gpu=settings.OCR_USE_GPU)
         print("[OCR] PaddleOCR engine loaded.")

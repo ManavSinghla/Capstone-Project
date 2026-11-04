@@ -35,7 +35,7 @@ async def process_image(
 
     Returns structured text blocks with bounding boxes and confidence scores.
     The caller (Express backend) is responsible for persisting the result.
-    This endpoint is stateless — it does NOT store images to disk.
+    This endpoint is stateless â€” it does NOT store images to disk.
     """
     start_ms = int(time.time() * 1000)
 

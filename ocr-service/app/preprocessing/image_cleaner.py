@@ -21,7 +21,7 @@ def to_grayscale(image: np.ndarray) -> np.ndarray:
 
 
 def denoise(image: np.ndarray) -> np.ndarray:
-    """Bilateral filter — reduces noise while keeping text edges sharp."""
+    """Bilateral filter â€” reduces noise while keeping text edges sharp."""
     return cv2.bilateralFilter(image, d=9, sigmaColor=75, sigmaSpace=75)
 
 
@@ -49,7 +49,7 @@ def deskew(image: np.ndarray) -> np.ndarray:
         angle = -(90 + angle)
     else:
         angle = -angle
-    if abs(angle) < 0.5:  # Ignore sub-half-degree skew — not worth resampling
+    if abs(angle) < 0.5:  # Ignore sub-half-degree skew â€” not worth resampling
         return image
     h, w = image.shape[:2]
     center = (w // 2, h // 2)

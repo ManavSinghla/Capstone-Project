@@ -4,7 +4,7 @@ paddle_engine.py - PaddleOCR concrete implementation of AbstractOCREngine
 This file is ONLY imported when paddlepaddle is installed.
 If paddlepaddle is absent, main.py falls back to MockOCREngine.
 
-Milestone 1: Scaffold only — actual PaddleOCR wiring is implemented in Milestone 2.
+Milestone 1: Scaffold only â€” actual PaddleOCR wiring is implemented in Milestone 2.
 """
 
 import uuid
