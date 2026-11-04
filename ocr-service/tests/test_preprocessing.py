@@ -117,3 +117,4 @@ def test_preprocess_pipeline():
     # Binarized option
     out_bin = preprocess(img, binarize=True)
     assert set(np.unique(out_bin)).issubset({0, 255})
+

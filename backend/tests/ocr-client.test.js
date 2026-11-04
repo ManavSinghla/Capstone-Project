@@ -18,3 +18,4 @@ describe('OCR Client Service', () => {
     );
   });
 });
+
