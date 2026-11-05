@@ -86,7 +86,7 @@ export function evaluate(declarations, ruleVersion) {
   return {
     status: RuleStatus.COMPLIANT,
     explanation:
-      `MRP declared as "?${amount.toFixed(2)} inclusive of all taxes". ` +
+      `MRP declared as "₹${amount.toFixed(2)} inclusive of all taxes". ` +
       'Satisfies Rule 6(1)(e).',
     evidenceSnippet: mrp.rawText,
     metadata: { amount, inclTaxes: true },

@@ -141,13 +141,21 @@ export function evaluate(declarations, ruleVersion) {
     // Validate arithmetic
     if (mrp && isConfident(mrp)) {
       const { amount: mrpAmt } = mrp.normalizedValue;
-      const expectedUsp = calculateExpectedUsp(mrpAmt, magnitude, unit);
-      if (expectedUsp !== null && Math.abs(declaredUsp - expectedUsp) > 0.005) {
+      let qty = magnitude;
+      const u = unit.toLowerCase();
+      if (u === 'kg') qty = magnitude * 1000;
+      const raw = mrpAmt / qty;
+      const expectedUsp = Math.round(raw * 100) / 100;
+
+      // Allow exact match or standard 2-decimal rounded match within 0.01 tolerance
+      const isMatch = Math.abs(declaredUsp - raw) < 0.005 || Math.abs(declaredUsp - expectedUsp) <= 0.01;
+
+      if (!isMatch) {
         return {
           status: RuleStatus.NON_COMPLIANT,
           explanation:
-            `Declared USP (?${declaredUsp}/${baseUnit}) does not match calculated value ` +
-            `(?${mrpAmt} ÷ ${magnitude}${unit} = ?${expectedUsp}/${unit}). ` +
+            `Declared USP (₹${declaredUsp}/${baseUnit}) does not match calculated value ` +
+            `(₹${mrpAmt} ÷ ${magnitude}${unit} = ₹${expectedUsp}/${unit}). ` +
             'Discrepancy exceeds rounding tolerance.',
           evidenceSnippet: usp.rawText,
           metadata: { declaredUsp, expectedUsp, mrpAmt, qtyMagnitude: magnitude, qtyUnit: unit },
@@ -159,7 +167,7 @@ export function evaluate(declarations, ruleVersion) {
   return {
     status: RuleStatus.COMPLIANT,
     explanation:
-      `Unit Sale Price declared as ?${declaredUsp}/${baseUnit}. Passes Rule 6(11).`,
+      `Unit Sale Price declared as ₹${declaredUsp}/${baseUnit}. Passes Rule 6(11).`,
     evidenceSnippet: usp.rawText,
     metadata: { declaredUsp, baseUnit },
   };

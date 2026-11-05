@@ -10,7 +10,7 @@ import {
   calculateClientPdpArea,
   evaluateDeclarationsClient,
 } from './services/clientComplianceEngine';
-import { liveReEvaluate, processInspection } from './services/api';
+import { liveReEvaluate, processInspection, generatePdfReport } from './services/api';
 
 export default function App() {
   // Preset & Image State
@@ -34,6 +34,7 @@ export default function App() {
   const [selectedFieldKey, setSelectedFieldKey] = useState(null);
   const [hoveredFieldKey, setHoveredFieldKey] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Initialize declarations from active preset
   const initFromPreset = useCallback((preset) => {
@@ -304,6 +305,40 @@ export default function App() {
     if (block.fieldKey) setSelectedFieldKey(block.fieldKey);
   };
 
+  // Official PDF Memo Exporter (FR-6.2 / Milestone 4)
+  const handleExportPdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      const pdpArea = calculateClientPdpArea(packageShape, dimensions);
+      const blob = await generatePdfReport({
+        productName: productName || 'Packaged Commodity',
+        brandName: brandName || '',
+        packageShape,
+        dimensions,
+        pdpAreaSqCm: pdpArea,
+        overallStatus,
+        declarations,
+        evaluations,
+        quality,
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const sanitizedName = (productName || 'commodity').toLowerCase().replace(/[^a-z0-9]/g, '-');
+      a.download = `compliance-audit-${sanitizedName}-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert(`Failed to generate PDF audit report: ${err.message}`);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans antialiased text-slate-900">
       {/* Top Navbar */}
@@ -313,6 +348,8 @@ export default function App() {
         activePresetId={activePresetId}
         onSelectPreset={handleSelectPreset}
         isProcessing={isProcessing}
+        onExportPdf={handleExportPdf}
+        isExportingPdf={isExportingPdf}
       />
 
       {/* Main Container */}
@@ -357,6 +394,8 @@ export default function App() {
               evaluations={evaluations}
               overallStatus={overallStatus}
               pdpAreaSqCm={calculateClientPdpArea(packageShape, dimensions)}
+              onExportPdf={handleExportPdf}
+              isExportingPdf={isExportingPdf}
             />
           </div>
         </div>

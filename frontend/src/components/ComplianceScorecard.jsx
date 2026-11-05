@@ -13,6 +13,8 @@ export default function ComplianceScorecard({
   evaluations = [],
   overallStatus = 'COMPLIANT',
   pdpAreaSqCm = 120,
+  onExportPdf,
+  isExportingPdf = false,
 }) {
   const [filter, setFilter] = useState('ALL');
   const [expandedCode, setExpandedCode] = useState(null);
@@ -191,6 +193,21 @@ export default function ComplianceScorecard({
             </div>
           );
         })}
+      </div>
+
+      {/* Export Official PDF Memo Button (FR-6.2 / Milestone 4) */}
+      <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[11px] text-slate-500 font-medium">
+          Official statutory report under Section 15 of Legal Metrology Act, 2009
+        </span>
+        <button
+          onClick={onExportPdf}
+          disabled={isExportingPdf}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 active:scale-95 disabled:opacity-50 shadow-xs transition-all cursor-pointer"
+        >
+          <FileText className="w-3.5 h-3.5" />
+          {isExportingPdf ? 'Compiling Official PDF Memo...' : 'Export Official PDF Memo'}
+        </button>
       </div>
     </div>
   );
