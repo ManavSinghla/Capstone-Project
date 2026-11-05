@@ -263,18 +263,18 @@ The system utilizes PostgreSQL via Prisma ORM. Key entity relations:
 - Core decoupled Compliance Engine module with unit tests.
 - Initial seed data for verified and provisional legal rules.
 
-### Milestone 2: OCR Microservice & Preprocessing Pipeline *(Next)*
+### Milestone 2: OCR Microservice & Preprocessing Pipeline *(Completed)*
 - Full OpenCV preprocessing integration (Laplacian blur, CLAHE contrast adjustment, deskewing).
 - PaddleOCR model loading and token extraction pipeline.
 - Express-to-FastAPI multipart streaming client.
 - Integration tests for OCR contract with mock and test fixtures.
 
-### Milestone 3: Normalization Engine & HITL Dashboard
+### Milestone 3: Normalization Engine & HITL Dashboard *(Completed)*
 - Regex and NLP normalization pipeline for Indian packaging patterns (MRP, dates, addresses, USP).
 - React frontend: Drag-and-drop image uploader and interactive bounding box canvas.
 - Human-in-the-loop field correction interface with live re-evaluation.
 
-### Milestone 4: Reporting, Security Hardening & Evaluation
+### Milestone 4: Reporting, Security Hardening & Evaluation *(Next)*
 - PDF generation module with official Government of India memo styling and photo exhibits.
 - End-to-end evaluation with real packaged commodity label dataset.
 - Security audit, input sanitization, and production deployment packaging.
