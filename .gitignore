@@ -17,6 +17,7 @@ ocr-service/venv/
 ocr-service/*.egg-info/
 ocr-service/.pytest_cache/
 ocr-service/.mypy_cache/
+legal-metrology-ocr/
 
 # === Frontend =================================================================
 frontend/node_modules/
