@@ -274,7 +274,7 @@ The system utilizes PostgreSQL via Prisma ORM. Key entity relations:
 - React frontend: Drag-and-drop image uploader and interactive bounding box canvas.
 - Human-in-the-loop field correction interface with live re-evaluation.
 
-### Milestone 4: Reporting, Security Hardening & Evaluation *(Next)*
+### Milestone 4: Reporting, Security Hardening & Evaluation *(Completed)*
 - PDF generation module with official Government of India memo styling and photo exhibits.
 - End-to-end evaluation with real packaged commodity label dataset.
 - Security audit, input sanitization, and production deployment packaging.
