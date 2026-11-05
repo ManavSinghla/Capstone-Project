@@ -279,3 +279,4 @@ The system utilizes PostgreSQL via Prisma ORM. Key entity relations:
 - End-to-end evaluation with real packaged commodity label dataset.
 - Security audit, input sanitization, and production deployment packaging.
 
+### Milestone 5: Documentation & Presentation *(next)*
