@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, AlertCircle } from './Icons';
+import { ShieldCheck, AlertCircle, FileText } from './Icons';
 
 export default function Navbar({
   overallStatus,
@@ -7,6 +7,8 @@ export default function Navbar({
   activePresetId,
   onSelectPreset,
   isProcessing,
+  onExportPdf,
+  isExportingPdf,
 }) {
   const getStatusBadge = () => {
     switch (overallStatus) {
@@ -88,6 +90,19 @@ export default function Navbar({
 
             {/* Live Overall Verdict Badge */}
             {getStatusBadge()}
+
+            {/* Export Official PDF Memo Button */}
+            {onExportPdf && (
+              <button
+                onClick={onExportPdf}
+                disabled={isExportingPdf}
+                title="Export official Government of India compliance memo PDF"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 shadow-xs transition-all cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                {isExportingPdf ? 'Exporting...' : 'Export Memo'}
+              </button>
+            )}
           </div>
         </div>
       </div>

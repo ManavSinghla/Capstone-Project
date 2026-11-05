@@ -33,7 +33,7 @@ const MRP_BARE_PATTERN = new RegExp(
 // --- Rule 6(11): Unit Sale Price (USP) -----------------------------------------
 // Accepts: "Unit Sale Price: Rs. 0.60/g", "USP: ₹0.425 per g", "USP: Rs. 1.20 / ml", "USP: ₹50.00 per kg"
 const USP_PATTERN = new RegExp(
-  `(?:unit\\s+sale\\s+price|u\\.?s\\.?p\\.?)\\s*:?\\s*${CURRENCY_REGEX}\\s*([\\d,]+(?:\\.\\d{1,4})?)\\s*(?:\\/|per\\s+)(g|kg|gm|gms|ml|l|ltr|litres?|cm|m|meters?|no|nos?\\.?|pieces?|pcs|units?|u|n)\\b`,
+  `(?:unit\\s+sale\\s+price|u\\.?s\\.?p\\.?)\\s*:?\\s*${CURRENCY_REGEX}\\s*([\\d,]+(?:\\.\\d{1,4})?)\\s*(?:\\/|per\\s+)\\s*(g|kg|gm|gms|ml|l|ltr|litres?|cm|m|meters?|no|nos?\\.?|pieces?|pcs|units?|u|n)\\b`,
   'i'
 );
 

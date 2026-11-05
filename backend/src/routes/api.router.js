@@ -1,19 +1,25 @@
 /**
  * api.router.js — Top-level API router
  * All routes are mounted under /api/v1 (set in app.js).
+ * Conforms to PRD Section 9.1 & Milestone 4 Specifications.
  */
 
 import { Router } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import { z } from 'zod';
 import { runComplianceCheck } from '../compliance-engine/index.js';
 import { normalizeDeclarations } from '../compliance-engine/normalizer.js';
-import { uploadMiddleware } from '../middlewares/upload.middleware.js';
+import { uploadMiddleware, magicNumberValidationMiddleware } from '../middlewares/upload.middleware.js';
 import { sendImageToOcrService } from '../services/ocr-client.service.js';
 import { sha256File } from '../services/file-storage.service.js';
+import { generateCompliancePdfStream } from '../services/pdf-report.service.js';
 
 const router = Router();
+
+// In-memory store for inspection sessions & audit trail (PRD Section 8 / FR-6.1)
+export const inspectionsStore = new Map();
 
 // Verified legal rule catalog for LM(PC) Rules 2011 (as amended 2021/2022)
 export const DEFAULT_RULES = [
@@ -109,7 +115,7 @@ export const DEFAULT_RULES = [
   },
 ];
 
-// Curated demo presets for testing the HITL Dashboard
+// Curated demo presets for testing the HITL Dashboard & Evaluation Dataset
 export const PRESETS = [
   {
     id: 'preset-compliant-biscuit',
@@ -219,7 +225,7 @@ export const PRESETS = [
       },
       {
         id: 'tb-3',
-        text: 'MRP Rs. 40.00', // Missing (inclusive of all taxes)
+        text: 'MRP Rs. 40.00',
         confidence: 0.99,
         bounding_box: { x_min: 60, y_min: 160, x_max: 220, y_max: 200 },
         estimated_font_height_px: 32,
@@ -327,24 +333,148 @@ export const PRESETS = [
       },
       {
         id: 'tb-2',
-        text: 'Net Content: 500 ml',
-        confidence: 0.65, // Below 0.80 threshold -> triggers NEEDS_REVIEW
-        bounding_box: { x_min: 40, y_min: 120, x_max: 220, y_max: 155 },
-        estimated_font_height_px: 26,
+        text: 'Generic Name: Electrolyte Drink',
+        confidence: 0.71,
+        bounding_box: { x_min: 40, y_min: 110, x_max: 280, y_max: 140 },
+        estimated_font_height_px: 24,
       },
       {
         id: 'tb-3',
-        text: 'MRP Rs. 75.00 (Incl. of all taxes)',
-        confidence: 0.68, // Below 0.80 threshold
-        bounding_box: { x_min: 40, y_min: 170, x_max: 360, y_max: 210 },
-        estimated_font_height_px: 28,
+        text: 'Net Content: 500 ml',
+        confidence: 0.65,
+        bounding_box: { x_min: 40, y_min: 150, x_max: 220, y_max: 180 },
+        estimated_font_height_px: 26,
       },
       {
         id: 'tb-4',
+        text: 'MRP Rs. 75.00 (Incl. of all taxes)',
+        confidence: 0.68,
+        bounding_box: { x_min: 40, y_min: 190, x_max: 360, y_max: 225 },
+        estimated_font_height_px: 28,
+      },
+      {
+        id: 'tb-5',
         text: 'USP: Rs. 0.15 / ml',
         confidence: 0.62,
-        bounding_box: { x_min: 40, y_min: 225, x_max: 210, y_max: 260 },
+        bounding_box: { x_min: 40, y_min: 235, x_max: 210, y_max: 270 },
         estimated_font_height_px: 24,
+      },
+      {
+        id: 'tb-6',
+        text: 'Mfg Date: 08/2026',
+        confidence: 0.69,
+        bounding_box: { x_min: 40, y_min: 280, x_max: 180, y_max: 310 },
+        estimated_font_height_px: 24,
+      },
+      {
+        id: 'tb-7',
+        text: 'Best Before 12 Months from Mfg',
+        confidence: 0.70,
+        bounding_box: { x_min: 40, y_min: 320, x_max: 310, y_max: 350 },
+        estimated_font_height_px: 24,
+      },
+      {
+        id: 'tb-8',
+        text: 'Mfg by: Hydro Tech Beverages, Industrial Area, Solan, Himachal Pradesh - 173229',
+        confidence: 0.73,
+        bounding_box: { x_min: 40, y_min: 360, x_max: 520, y_max: 410 },
+        estimated_font_height_px: 22,
+      },
+      {
+        id: 'tb-9',
+        text: 'Country of Origin: India',
+        confidence: 0.75,
+        bounding_box: { x_min: 40, y_min: 420, x_max: 240, y_max: 450 },
+        estimated_font_height_px: 24,
+      },
+      {
+        id: 'tb-10',
+        text: 'Customer Care: 1800 11 2233 | care@hydroblast.com',
+        confidence: 0.74,
+        bounding_box: { x_min: 40, y_min: 460, x_max: 420, y_max: 490 },
+        estimated_font_height_px: 22,
+      },
+    ],
+  },
+  {
+    id: 'preset-sunflower-oil',
+    name: 'Fortune Sunflower Oil 1L Pouch (Fully Compliant)',
+    productName: 'Refined Sunflower Oil',
+    brandName: 'Fortune',
+    packageShape: 'RECTANGULAR',
+    dimensions: { height_cm: 26, width_cm: 15, depth_cm: 5 },
+    imageUrl: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=800&q=80',
+    quality: { blurScore: 175.0, isBlurry: false, glarePercentage: 3.2, isOverexposed: false },
+    textBlocks: [
+      {
+        id: 'tb-1',
+        text: 'Fortune Sunlite Refined Sunflower Oil',
+        confidence: 0.98,
+        bounding_box: { x_min: 50, y_min: 30, x_max: 380, y_max: 75 },
+        estimated_font_height_px: 38,
+      },
+      {
+        id: 'tb-2',
+        text: 'Generic Name: Edible Vegetable Oil',
+        confidence: 0.96,
+        bounding_box: { x_min: 50, y_min: 85, x_max: 310, y_max: 115 },
+        estimated_font_height_px: 24,
+      },
+      {
+        id: 'tb-3',
+        text: 'Net Quantity: 1 L',
+        confidence: 0.97,
+        bounding_box: { x_min: 50, y_min: 130, x_max: 210, y_max: 165 },
+        estimated_font_height_px: 30,
+      },
+      {
+        id: 'tb-4',
+        text: 'MRP Rs. 145.00 (inclusive of all taxes)',
+        confidence: 0.99,
+        bounding_box: { x_min: 50, y_min: 180, x_max: 410, y_max: 220 },
+        estimated_font_height_px: 32,
+      },
+      {
+        id: 'tb-5',
+        text: 'USP: Rs. 145.00 / l',
+        confidence: 0.95,
+        bounding_box: { x_min: 50, y_min: 235, x_max: 240, y_max: 268 },
+        estimated_font_height_px: 26,
+      },
+      {
+        id: 'tb-6',
+        text: 'Date of Packing: 09/2026',
+        confidence: 0.94,
+        bounding_box: { x_min: 50, y_min: 285, x_max: 250, y_max: 315 },
+        estimated_font_height_px: 24,
+      },
+      {
+        id: 'tb-7',
+        text: 'Best Before 9 Months from Packing',
+        confidence: 0.93,
+        bounding_box: { x_min: 50, y_min: 330, x_max: 330, y_max: 360 },
+        estimated_font_height_px: 24,
+      },
+      {
+        id: 'tb-8',
+        text: 'Manufactured by: Adani Wilmar Limited, Fortune House, Near Navrangpura Railway Crossing, Ahmedabad, Gujarat - 380009',
+        confidence: 0.93,
+        bounding_box: { x_min: 50, y_min: 380, x_max: 560, y_max: 440 },
+        estimated_font_height_px: 22,
+      },
+      {
+        id: 'tb-9',
+        text: 'Country of Origin: India',
+        confidence: 0.98,
+        bounding_box: { x_min: 50, y_min: 455, x_max: 240, y_max: 485 },
+        estimated_font_height_px: 24,
+      },
+      {
+        id: 'tb-10',
+        text: 'Customer Care Toll Free: 1800 233 9999 | consumercare@adaniwilmar.in',
+        confidence: 0.95,
+        bounding_box: { x_min: 50, y_min: 500, x_max: 480, y_max: 535 },
+        estimated_font_height_px: 22,
       },
     ],
   },
@@ -355,33 +485,86 @@ export const PRESETS = [
  * - Rectangular: height * width
  * - Cylindrical: 0.4 * height * circumference
  */
-function calculatePdpArea(shape, dimensions = {}) {
+export function calculatePdpArea(shape, dimensions = {}) {
   const s = String(shape || 'RECTANGULAR').toUpperCase();
   if (s === 'CYLINDRICAL') {
     const h = parseFloat(dimensions.height_cm || dimensions.height || 0);
     const c = parseFloat(dimensions.circumference_cm || dimensions.circumference || 0);
     if (h > 0 && c > 0) return parseFloat((0.4 * h * c).toFixed(2));
   }
-  // Rectangular or other
   const h = parseFloat(dimensions.height_cm || dimensions.height || 0);
   const w = parseFloat(dimensions.width_cm || dimensions.width || 0);
   if (h > 0 && w > 0) return parseFloat((h * w).toFixed(2));
-  return 120.0; // fallback standard 120 cm²
+  return 120.0;
 }
 
-// --- Routes ------------------------------------------------------------------
+// --- Zod Input Validation Schemas (NFR-3.1 & Milestone 4) ----------------------
 
-// Status & health
+const dimensionsSchema = z.object({
+  height_cm: z.number().positive().optional(),
+  width_cm: z.number().positive().optional(),
+  depth_cm: z.number().positive().optional(),
+  diameter_cm: z.number().positive().optional(),
+  circumference_cm: z.number().positive().optional(),
+}).optional();
+
+const createInspectionSchema = z.object({
+  productName: z.string().trim().min(1, 'productName is required').max(200),
+  brandName: z.string().trim().max(100).optional(),
+  packageShape: z.enum(['RECTANGULAR', 'CYLINDRICAL']).optional(),
+  dimensions: dimensionsSchema,
+});
+
+const reportGenerateSchema = z.object({
+  inspectionId: z.string().trim().max(80).optional(),
+  productName: z.string().trim().min(1).max(200),
+  brandName: z.string().trim().max(100).optional(),
+  packageShape: z.enum(['RECTANGULAR', 'CYLINDRICAL']).optional(),
+  dimensions: dimensionsSchema,
+  pdpAreaSqCm: z.number().nonnegative().optional(),
+  overallStatus: z.string().optional(),
+  declarations: z.record(z.any()).optional(),
+  evaluations: z.array(z.any()).optional(),
+  quality: z.any().optional(),
+  inspectorName: z.string().trim().max(100).optional(),
+  officerDesignation: z.string().trim().max(150).optional(),
+});
+
+function validateBody(schema) {
+  return (req, res, next) => {
+    const result = schema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation error: invalid request payload.',
+        issues: result.error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
+      });
+    }
+    req.validatedBody = result.data;
+    next();
+  };
+}
+
+// --- API Routes --------------------------------------------------------------
+
+/**
+ * GET /api/v1/status
+ * Health & readiness probe.
+ */
 router.get('/status', (req, res) => {
   res.json({
     success: true,
     message: 'Legal Metrology Compliance API is running.',
-    milestone: 3,
+    milestone: 4,
     activeRulesCount: DEFAULT_RULES.length,
+    presetsCount: PRESETS.length,
   });
 });
 
-// Catalog of active rules
+/**
+ * GET /api/v1/rules
+ * List all active statutory rule definitions (PRD 9.1).
+ */
 router.get('/rules', (req, res) => {
   res.json({
     success: true,
@@ -389,7 +572,10 @@ router.get('/rules', (req, res) => {
   });
 });
 
-// Demo inspection presets
+/**
+ * GET /api/v1/presets
+ * Return evaluation presets covering compliant and violation test cases.
+ */
 router.get('/presets', (req, res) => {
   res.json({
     success: true,
@@ -398,41 +584,145 @@ router.get('/presets', (req, res) => {
 });
 
 /**
- * POST /api/v1/inspections/process
- * Multi-part upload or JSON payload processing.
- * Dispatches image to OCR, normalizes declarations, and evaluates compliance.
+ * GET /api/v1/presets/:id/evaluate
+ * Immediate end-to-end evaluation of a preset against the compliance engine.
  */
-router.post('/inspections/process', uploadMiddleware.single('image'), async (req, res, next) => {
-  try {
-    const inspectionId = `insp-${crypto.randomUUID().slice(0, 8)}`;
-    const productName = req.body.productName || 'Unlabeled Commodity Sample';
-    const brandName = req.body.brandName || null;
-    const packageShape = req.body.packageShape || 'RECTANGULAR';
-    const dimensions = req.body.dimensions
-      ? (typeof req.body.dimensions === 'string' ? JSON.parse(req.body.dimensions) : req.body.dimensions)
-      : { height_cm: 15, width_cm: 10, depth_cm: 5 };
+router.get('/presets/:id/evaluate', (req, res) => {
+  const preset = PRESETS.find((p) => p.id === req.params.id);
+  if (!preset) {
+    return res.status(404).json({ success: false, error: `Preset '${req.params.id}' not found.` });
+  }
 
-    const pdpAreaSqCm = calculatePdpArea(packageShape, dimensions);
+  const pdpAreaSqCm = calculatePdpArea(preset.packageShape, preset.dimensions);
+  const { declarations, evaluations, overallStatus } = runComplianceCheck({
+    textBlocks: preset.textBlocks,
+    pdpAreaSqCm,
+    ruleVersions: DEFAULT_RULES,
+    context: { minObservedFontHeightMm: 3.0 },
+  });
 
-    let textBlocks = [];
-    let quality = { blurScore: 150.0, isBlurry: false, glarePercentage: 2.0, isOverexposed: false };
-    let imageMetadata = {
-      inspectionId,
-      filename: req.file ? req.file.filename : 'simulated-sample.jpg',
-      sizeBytes: req.file ? req.file.size : 102400,
-      mimeType: req.file ? req.file.mimetype : 'image/jpeg',
-      sha256: req.file ? await sha256File(req.file.path) : crypto.randomBytes(32).toString('hex'),
+  const inspectionId = `insp-preset-${preset.id}`;
+  const inspectionRecord = {
+    inspectionId,
+    productName: preset.productName,
+    brandName: preset.brandName,
+    packageShape: preset.packageShape,
+    dimensions: preset.dimensions,
+    pdpAreaSqCm,
+    quality: preset.quality,
+    textBlocks: preset.textBlocks,
+    declarations,
+    evaluations,
+    overallStatus,
+    createdAt: new Date().toISOString(),
+  };
+
+  inspectionsStore.set(inspectionId, inspectionRecord);
+
+  res.json({
+    success: true,
+    ...inspectionRecord,
+  });
+});
+
+/**
+ * POST /api/v1/inspections
+ * Initialize a new inspection session (PRD 9.1).
+ */
+router.post('/inspections', validateBody(createInspectionSchema), (req, res) => {
+  const { productName, brandName, packageShape = 'RECTANGULAR', dimensions = { height_cm: 15, width_cm: 10, depth_cm: 5 } } = req.validatedBody;
+  const inspectionId = `insp-${crypto.randomUUID().slice(0, 8)}`;
+  const pdpAreaSqCm = calculatePdpArea(packageShape, dimensions);
+
+  const newInspection = {
+    inspectionId,
+    productName,
+    brandName: brandName || null,
+    packageShape,
+    dimensions,
+    pdpAreaSqCm,
+    status: 'INITIALIZED',
+    images: [],
+    declarations: {},
+    evaluations: [],
+    overallStatus: 'NEEDS_REVIEW',
+    createdAt: new Date().toISOString(),
+  };
+
+  inspectionsStore.set(inspectionId, newInspection);
+
+  res.status(201).json({
+    success: true,
+    inspection: newInspection,
+  });
+});
+
+/**
+ * POST /api/v1/inspections/:id/images
+ * Upload package panel image (PRD 9.1) with magic number verification.
+ */
+router.post(
+  '/inspections/:id/images',
+  uploadMiddleware.single('image'),
+  magicNumberValidationMiddleware,
+  async (req, res) => {
+    const inspection = inspectionsStore.get(req.params.id);
+    if (!inspection) {
+      if (req.file) try { fs.unlinkSync(req.file.path); } catch { /* ignore */ }
+      return res.status(404).json({ success: false, error: `Inspection ${req.params.id} not found.` });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No image file uploaded.' });
+    }
+
+    const sha256 = await sha256File(req.file.path);
+    const imageInfo = {
+      id: crypto.randomUUID(),
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      sizeBytes: req.file.size,
+      sha256,
+      panelType: req.body.panelType || 'PDP',
+      filePath: req.file.path,
+      uploadedAt: new Date().toISOString(),
     };
 
-    // If an image was uploaded, attempt to stream to OCR microservice
-    if (req.file) {
+    inspection.images.push(imageInfo);
+    inspectionsStore.set(req.params.id, inspection);
+
+    res.json({
+      success: true,
+      image: imageInfo,
+    });
+  }
+);
+
+/**
+ * POST /api/v1/inspections/:id/process
+ * Trigger OCR & evaluation for an established inspection session (PRD 9.1).
+ */
+router.post('/inspections/:id/process', async (req, res, next) => {
+  try {
+    const inspection = inspectionsStore.get(req.params.id);
+    if (!inspection) {
+      return res.status(404).json({ success: false, error: `Inspection ${req.params.id} not found.` });
+    }
+
+    let textBlocks = [];
+    let quality = { blurScore: 160.0, isBlurry: false, glarePercentage: 2.0, isOverexposed: false };
+
+    // Process primary uploaded image if available
+    if (inspection.images.length > 0) {
+      const primaryImage = inspection.images[0];
       try {
-        const ocrResult = await sendImageToOcrService(req.file.path, req.body.panelType || 'PDP');
+        const ocrResult = await sendImageToOcrService(primaryImage.filePath, primaryImage.panelType);
         if (ocrResult && Array.isArray(ocrResult.text_blocks)) {
           textBlocks = ocrResult.text_blocks;
           if (ocrResult.quality) {
             quality = {
-              blurScore: ocrResult.quality.blur_score || 150.0,
+              blurScore: ocrResult.quality.blur_score || 160.0,
               isBlurry: Boolean(ocrResult.quality.is_blurry),
               glarePercentage: ocrResult.quality.glare_percentage || 0,
               isOverexposed: Boolean(ocrResult.quality.is_overexposed),
@@ -440,49 +730,264 @@ router.post('/inspections/process', uploadMiddleware.single('image'), async (req
           }
         }
       } catch (ocrErr) {
-        console.warn(`[OCR WARNING] FastAPI OCR service unavailable (${ocrErr.message}). Using fallback local normalizer.`);
-        // Graceful fallback to simulated OCR text blocks
+        console.warn(`[OCR WARNING] FastAPI OCR service unavailable (${ocrErr.message}). Using preset sample fallback.`);
         textBlocks = PRESETS[0].textBlocks;
-        quality = PRESETS[0].quality;
       }
-    } else if (req.body.presetId) {
-      // User selected a preset
-      const preset = PRESETS.find((p) => p.id === req.body.presetId) || PRESETS[0];
-      textBlocks = preset.textBlocks;
-      quality = preset.quality;
-    } else if (req.body.textBlocks) {
-      textBlocks = req.body.textBlocks;
     } else {
-      // Default sample fallback
       textBlocks = PRESETS[0].textBlocks;
-      quality = PRESETS[0].quality;
     }
 
-    // Run Compliance Engine
     const { declarations, evaluations, overallStatus } = runComplianceCheck({
       textBlocks,
-      pdpAreaSqCm,
+      pdpAreaSqCm: inspection.pdpAreaSqCm,
       ruleVersions: DEFAULT_RULES,
       context: { minObservedFontHeightMm: 3.0 },
     });
 
+    inspection.textBlocks = textBlocks;
+    inspection.quality = quality;
+    inspection.declarations = declarations;
+    inspection.evaluations = evaluations;
+    inspection.overallStatus = overallStatus;
+    inspection.status = 'COMPLETED';
+    inspectionsStore.set(req.params.id, inspection);
+
     res.json({
       success: true,
-      inspectionId,
-      productName,
-      brandName,
-      packageShape,
-      dimensions,
-      pdpAreaSqCm,
-      quality,
-      imageMetadata,
-      textBlocks,
-      declarations,
-      evaluations,
-      overallStatus,
+      inspection,
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/v1/inspections/process
+ * Unified one-shot multipart upload or JSON payload processing.
+ * Dispatches image to OCR, normalizes declarations, and evaluates compliance.
+ */
+router.post(
+  '/inspections/process',
+  uploadMiddleware.single('image'),
+  magicNumberValidationMiddleware,
+  async (req, res, next) => {
+    try {
+      const inspectionId = `insp-${crypto.randomUUID().slice(0, 8)}`;
+      const productName = req.body.productName || 'Unlabeled Commodity Sample';
+      const brandName = req.body.brandName || null;
+      const packageShape = req.body.packageShape || 'RECTANGULAR';
+
+      let dimensions = { height_cm: 15, width_cm: 10, depth_cm: 5 };
+      if (req.body.dimensions) {
+        dimensions = typeof req.body.dimensions === 'string'
+          ? JSON.parse(req.body.dimensions)
+          : req.body.dimensions;
+      }
+
+      const pdpAreaSqCm = calculatePdpArea(packageShape, dimensions);
+
+      let textBlocks = [];
+      let quality = { blurScore: 150.0, isBlurry: false, glarePercentage: 2.0, isOverexposed: false };
+      let imageMetadata = {
+        inspectionId,
+        filename: req.file ? req.file.filename : 'simulated-sample.jpg',
+        sizeBytes: req.file ? req.file.size : 102400,
+        mimeType: req.file ? req.file.mimetype : 'image/jpeg',
+        sha256: req.file ? await sha256File(req.file.path) : crypto.randomBytes(32).toString('hex'),
+      };
+
+      if (req.file) {
+        try {
+          const ocrResult = await sendImageToOcrService(req.file.path, req.body.panelType || 'PDP');
+          if (ocrResult && Array.isArray(ocrResult.text_blocks)) {
+            textBlocks = ocrResult.text_blocks;
+            if (ocrResult.quality) {
+              quality = {
+                blurScore: ocrResult.quality.blur_score || 150.0,
+                isBlurry: Boolean(ocrResult.quality.is_blurry),
+                glarePercentage: ocrResult.quality.glare_percentage || 0,
+                isOverexposed: Boolean(ocrResult.quality.is_overexposed),
+              };
+            }
+          }
+        } catch (ocrErr) {
+          console.warn(`[OCR WARNING] FastAPI OCR service unavailable (${ocrErr.message}). Using preset sample fallback.`);
+          textBlocks = PRESETS[0].textBlocks;
+          quality = PRESETS[0].quality;
+        }
+      } else if (req.body.presetId) {
+        const preset = PRESETS.find((p) => p.id === req.body.presetId) || PRESETS[0];
+        textBlocks = preset.textBlocks;
+        quality = preset.quality;
+      } else if (req.body.textBlocks) {
+        textBlocks = req.body.textBlocks;
+      } else {
+        textBlocks = PRESETS[0].textBlocks;
+        quality = PRESETS[0].quality;
+      }
+
+      const { declarations, evaluations, overallStatus } = runComplianceCheck({
+        textBlocks,
+        pdpAreaSqCm,
+        ruleVersions: DEFAULT_RULES,
+        context: { minObservedFontHeightMm: 3.0 },
+      });
+
+      const inspectionRecord = {
+        success: true,
+        inspectionId,
+        productName,
+        brandName,
+        packageShape,
+        dimensions,
+        pdpAreaSqCm,
+        quality,
+        imageMetadata,
+        textBlocks,
+        declarations,
+        evaluations,
+        overallStatus,
+        createdAt: new Date().toISOString(),
+      };
+
+      inspectionsStore.set(inspectionId, inspectionRecord);
+
+      res.json(inspectionRecord);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/v1/inspections/:id
+ * Fetch full inspection details & results (PRD 9.1).
+ */
+router.get('/inspections/:id', (req, res) => {
+  const record = inspectionsStore.get(req.params.id);
+  if (!record) {
+    return res.status(404).json({ success: false, error: `Inspection ${req.params.id} not found.` });
+  }
+  res.json({ success: true, inspection: record });
+});
+
+/**
+ * PATCH /api/v1/inspections/:id/declarations/:fieldName
+ * Human override of extracted declaration with audit logging and immediate re-evaluation (PRD 9.1 / FR-5.3).
+ */
+router.patch('/inspections/:id/declarations/:fieldName', (req, res) => {
+  const record = inspectionsStore.get(req.params.id);
+  if (!record) {
+    return res.status(404).json({ success: false, error: `Inspection ${req.params.id} not found.` });
+  }
+
+  const { fieldName } = req.params;
+  const { normalizedValue, overrideReason = 'Inspector Manual Correction', inspectorId = 'INSP-OFFICER' } = req.body;
+
+  if (!normalizedValue) {
+    return res.status(400).json({ success: false, error: 'normalizedValue is required.' });
+  }
+
+  const currentDecl = record.declarations[fieldName] || {
+    rawText: 'Manual Field Entry',
+    confidence: 1.0,
+    boundingBox: { x_min: 50, y_min: 50, x_max: 300, y_max: 90 },
+  };
+
+  record.declarations[fieldName] = {
+    ...currentDecl,
+    isUserOverridden: true,
+    overrideReason,
+    overriddenBy: inspectorId,
+    overriddenAt: new Date().toISOString(),
+    normalizedValue,
+  };
+
+  // Re-evaluate immediately
+  const { evaluations, overallStatus } = runComplianceCheck({
+    declarations: record.declarations,
+    pdpAreaSqCm: record.pdpAreaSqCm,
+    ruleVersions: DEFAULT_RULES,
+  });
+
+  record.evaluations = evaluations;
+  record.overallStatus = overallStatus;
+  inspectionsStore.set(req.params.id, record);
+
+  res.json({
+    success: true,
+    fieldName,
+    declaration: record.declarations[fieldName],
+    evaluations,
+    overallStatus,
+  });
+});
+
+/**
+ * GET /api/v1/inspections/:id/report.pdf
+ * Export generated legal compliance PDF as binary stream (PRD 9.1 & FR-6.2).
+ */
+router.get('/inspections/:id/report.pdf', (req, res, next) => {
+  try {
+    const record = inspectionsStore.get(req.params.id);
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        error: `Inspection '${req.params.id}' not found. Cannot generate report.`,
+      });
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="compliance-memo-${req.params.id}.pdf"`);
+
+    generateCompliancePdfStream({
+      inspectionId: record.inspectionId || req.params.id,
+      productName: record.productName || 'Packaged Commodity',
+      brandName: record.brandName || '',
+      packageShape: record.packageShape || 'RECTANGULAR',
+      dimensions: record.dimensions || {},
+      pdpAreaSqCm: record.pdpAreaSqCm || 120,
+      overallStatus: record.overallStatus || 'NEEDS_REVIEW',
+      quality: record.quality || {},
+      declarations: record.declarations || {},
+      evaluations: record.evaluations || [],
+      inspectorName: req.query.inspector || 'Authorized Legal Metrology Inspector',
+      officerDesignation: 'Legal Metrology Division, Department of Consumer Affairs',
+    }, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/v1/report/generate
+ * Direct stateless PDF generation endpoint from live client inspection payload (FR-6.2).
+ * Enables one-click instant PDF export directly from the HITL dashboard state.
+ */
+router.post('/report/generate', validateBody(reportGenerateSchema), (req, res, next) => {
+  try {
+    const data = req.validatedBody;
+    const inspectionId = data.inspectionId || `INSP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="compliance-memo-${inspectionId}.pdf"`);
+
+    generateCompliancePdfStream({
+      inspectionId,
+      productName: data.productName,
+      brandName: data.brandName || '',
+      packageShape: data.packageShape || 'RECTANGULAR',
+      dimensions: data.dimensions || {},
+      pdpAreaSqCm: data.pdpAreaSqCm || 120,
+      overallStatus: data.overallStatus || 'NEEDS_REVIEW',
+      quality: data.quality || {},
+      declarations: data.declarations || {},
+      evaluations: data.evaluations || [],
+      inspectorName: data.inspectorName || 'Authorized Legal Metrology Inspector',
+      officerDesignation: data.officerDesignation || 'Legal Metrology Division, Central/State Cell',
+    }, res);
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -504,7 +1009,6 @@ router.post('/compliance/re-evaluate', (req, res, next) => {
 
     const pdpAreaSqCm = providedPdpArea || calculatePdpArea(packageShape, dimensions);
 
-    // Run pure compliance check with the user's declarations
     const { evaluations, overallStatus } = runComplianceCheck({
       declarations,
       pdpAreaSqCm,

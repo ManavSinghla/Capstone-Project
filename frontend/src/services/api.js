@@ -41,3 +41,22 @@ export async function liveReEvaluate(payload) {
   return await res.json();
 }
 
+export async function downloadInspectionPdf(inspectionId) {
+  const res = await fetch(`${API_BASE_URL}/inspections/${inspectionId}/report.pdf`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.blob();
+}
+
+export async function generatePdfReport(payload) {
+  const res = await fetch(`${API_BASE_URL}/report/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to generate PDF report: ${text}`);
+  }
+  return await res.blob();
+}
+
