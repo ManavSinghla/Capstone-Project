@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
-# System packages needed by OpenCV headless
+# System packages needed by OpenCV and PaddleOCR
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 libsm6 libxrender1 libxext6 \
+    libgl1 libgomp1 libglib2.0-0 libsm6 libxrender1 libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user (UID 1000) for security and Hugging Face Spaces compatibility
