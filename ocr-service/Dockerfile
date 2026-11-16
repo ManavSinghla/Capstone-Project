@@ -14,7 +14,7 @@ ENV HOME=/home/user \
 WORKDIR $HOME/app
 
 # Install PaddlePaddle CPU wheel
-RUN pip install --no-cache-dir --user paddlepaddle==2.6.1
+RUN pip install --no-cache-dir --user paddlepaddle==2.6.2
 
 COPY --chown=user:user requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
