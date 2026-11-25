@@ -441,3 +441,4 @@ function drawTableRow(doc, L, W, cells, colWidths, isAlt, isFlagged) {
   doc.rect(L, y, W, rowH).strokeColor('#E2E6EA').lineWidth(0.3).stroke();
   doc.y = y + rowH;
 }
+
